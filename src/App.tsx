@@ -300,7 +300,7 @@ export default function App() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-              placeholder="오늘의 작업을 입력하세요 (예: 거푸집 조립, 철근 배근)"
+              placeholder="오늘의 작업을 입력하세요"
               className="w-full pl-14 pr-6 py-4 text-lg rounded-2xl border-2 border-slate-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/20 outline-none transition-all shadow-sm font-medium"
             />
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
