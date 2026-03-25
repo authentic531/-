@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Search, Printer, AlertTriangle, CheckSquare, BookOpen, ShieldAlert, Loader2, History, Settings, Key } from 'lucide-react';
+import { Search, Printer, AlertTriangle, CheckSquare, BookOpen, ShieldAlert, Loader2, History, Settings, Key, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const formatSafetyText = (text: string) => {
   if (!text) return null;
@@ -34,10 +34,15 @@ interface AccidentCase {
   countermeasure: string;
 }
 
+interface RegulationItem {
+  title: string;
+  content: string;
+}
+
 interface Regulations {
-  isha: string[];
-  kcs: string[];
-  kosha: string[];
+  isha: RegulationItem[];
+  kcs: RegulationItem[];
+  kosha: RegulationItem[];
 }
 
 interface TBMData {
@@ -58,6 +63,8 @@ export default function App() {
   const [isFocused, setIsFocused] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showAllRegulations, setShowAllRegulations] = useState(false);
+  const [expandedRegs, setExpandedRegs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const saved = localStorage.getItem('smart_tbm_recent');
@@ -116,15 +123,17 @@ export default function App() {
 2. 거짓된 정보(환각)를 만들어내지 말고 오직 신뢰할 수 있는 문서에 기반할 것.
 3. 핵심 키워드나 수치, 기준은 반드시 **키워드** 형태로 강조할 것 (예: **안전대**, **2m 이상**).
 4. '작업 유의사항'은 반드시 순서대로 번호(1., 2., 3....)를 매겨서 작성할 것.
-5. '작업 유의사항'과 '관련 안전 기준 및 법규' 항목에서 콜론(:)을 사용할 경우, 콜론 왼쪽 텍스트에는 절대로 **강조** 기호를 쓰지 말고 콜론 오른쪽의 핵심 내용에만 **강조** 기호를 사용할 것.
-6. 반드시 아래 4가지 양식을 엄격하게 지켜서 JSON 형식으로만 답변해줘. 다른 설명은 일절 생략하고 오직 JSON 데이터만 출력해.
+5. '작업 유의사항' 항목에서 콜론(:)을 사용할 경우, 콜론 왼쪽 텍스트에는 절대로 **강조** 기호를 쓰지 말고 콜론 오른쪽의 핵심 내용에만 **강조** 기호를 사용할 것.
+6. **중요**: 해당 작업과 관련된 **모든** 산업안전보건법, KCS, KOSHA GUIDE를 최대한 빠짐없이 모두 도출해줘. 배열의 앞쪽일수록 가장 중요하고 관련성이 높은 기준이 오도록 정렬해.
+7. 관련 안전 기준 및 법규는 반드시 "title"(조항/기준명)과 "content"(핵심 내용)로 분리하여 객체 형태로 작성할 것.
+8. 반드시 아래 4가지 양식을 엄격하게 지켜서 JSON 형식으로만 답변해줘. 다른 설명은 일절 생략하고 오직 JSON 데이터만 출력해.
 
 {
   "processDescription": ["1. 첫번째 작업 절차: 핵심 내용", "2. 두번째 작업 절차: 핵심 내용", ...],
   "regulations": {
-    "isha": ["산업안전보건기준에 관한 규칙 제00조: 핵심 내용", ...],
-    "kcs": ["KCS 00 00 00: 핵심 내용", ...],
-    "kosha": ["C-00-2023: 핵심 내용", ...]
+    "isha": [{"title": "산업안전보건기준에 관한 규칙 제00조", "content": "핵심 내용"}],
+    "kcs": [{"title": "KCS 00 00 00", "content": "핵심 내용"}],
+    "kosha": [{"title": "C-00-2023", "content": "핵심 내용"}]
   },
   "checklist": ["현장에서 즉시 확인할 수 있는 O/X 형태의 질문 1 (5~7개 작성)", ...],
   "accidentCases": [
@@ -204,6 +213,8 @@ export default function App() {
     }));
   };
 
+  const hasApiKey = Boolean(apiKey || process.env.GEMINI_API_KEY);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       <div className="h-2 w-full bg-safety-stripe fixed top-0 z-50"></div>
@@ -272,6 +283,12 @@ export default function App() {
         
         {/* Search Section */}
         <section className="flex flex-col items-center justify-center mt-8 mb-4">
+          {!hasApiKey && (
+            <div className="mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-800 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-bold animate-pulse w-full max-w-2xl shadow-sm">
+              <Settings className="w-5 h-5" />
+              <span>우측 상단의 설정(⚙️) 버튼을 눌러 API 키를 먼저 입력해주세요!</span>
+            </div>
+          )}
           <h2 className="text-3xl font-black text-slate-800 mb-6 text-center tracking-tight leading-snug">
             안전한 작업의 시작 <br className="sm:hidden" />
             <span className="text-slate-900 bg-yellow-400 px-2 py-0.5 rounded-md inline-block mx-1 shadow-sm">SMART TBM</span>을 통해 점검하세요
@@ -370,42 +387,61 @@ export default function App() {
                 <div className="flex-1 space-y-5">
                   {data.regulations ? (
                     <>
-                      <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                          <span className="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-amber-200">산업안전보건법</span>
-                        </h4>
-                        <ul className="space-y-2 pl-1">
-                          {data.regulations.isha.map((item, idx) => (
-                            <li key={idx} className="flex gap-2 text-slate-700 leading-relaxed text-sm md:text-base">
-                              <span>{renderListItem(item)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                          <span className="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-blue-200">KCS (표준시방서)</span>
-                        </h4>
-                        <ul className="space-y-2 pl-1">
-                          {data.regulations.kcs.map((item, idx) => (
-                            <li key={idx} className="flex gap-2 text-slate-700 leading-relaxed text-sm md:text-base">
-                              <span>{renderListItem(item)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                          <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-emerald-200">KOSHA GUIDE</span>
-                        </h4>
-                        <ul className="space-y-2 pl-1">
-                          {data.regulations.kosha.map((item, idx) => (
-                            <li key={idx} className="flex gap-2 text-slate-700 leading-relaxed text-sm md:text-base">
-                              <span>{renderListItem(item)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      {data.regulations.isha && data.regulations.isha.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <span className="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-amber-200">산업안전보건법</span>
+                          </h4>
+                          <ul className="space-y-3 pl-1">
+                            {data.regulations.isha.slice(0, 3).map((item, idx) => (
+                              <li key={idx} className="flex flex-col gap-1.5 text-slate-700 leading-relaxed text-sm md:text-base bg-slate-50 p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                                <span className="font-bold text-slate-800 text-xs opacity-70">{item.title}</span>
+                                <span className="font-medium">{formatSafetyText(item.content)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {data.regulations.kcs && data.regulations.kcs.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <span className="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-blue-200">KCS (표준시방서)</span>
+                          </h4>
+                          <ul className="space-y-3 pl-1">
+                            {data.regulations.kcs.slice(0, 3).map((item, idx) => (
+                              <li key={idx} className="flex flex-col gap-1.5 text-slate-700 leading-relaxed text-sm md:text-base bg-slate-50 p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                                <span className="font-bold text-slate-800 text-xs opacity-70">{item.title}</span>
+                                <span className="font-medium">{formatSafetyText(item.content)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {data.regulations.kosha && data.regulations.kosha.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-md text-sm shadow-sm border border-emerald-200">KOSHA GUIDE</span>
+                          </h4>
+                          <ul className="space-y-3 pl-1">
+                            {data.regulations.kosha.slice(0, 3).map((item, idx) => (
+                              <li key={idx} className="flex flex-col gap-1.5 text-slate-700 leading-relaxed text-sm md:text-base bg-slate-50 p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                                <span className="font-bold text-slate-800 text-xs opacity-70">{item.title}</span>
+                                <span className="font-medium">{formatSafetyText(item.content)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {(data.regulations.isha?.length > 3 || data.regulations.kcs?.length > 3 || data.regulations.kosha?.length > 3) && (
+                        <button
+                          onClick={() => setShowAllRegulations(true)}
+                          className="w-full mt-4 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl transition-colors border border-slate-200 flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <BookOpen className="w-5 h-5" />
+                          모든 기준 조회 (총 {(data.regulations.isha?.length || 0) + (data.regulations.kcs?.length || 0) + (data.regulations.kosha?.length || 0)}개)
+                        </button>
+                      )}
                     </>
                   ) : (
                     <ul className="space-y-3">
@@ -518,6 +554,128 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* All Regulations Modal */}
+      {showAllRegulations && data?.regulations && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-700">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">모든 관련 안전 기준 및 법규</h3>
+              </div>
+              <button 
+                onClick={() => setShowAllRegulations(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-8">
+              {data.regulations.isha && data.regulations.isha.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-md text-sm shadow-sm border border-amber-200">산업안전보건법</span>
+                    <span className="text-slate-500 text-sm font-medium">{data.regulations.isha.length}건</span>
+                  </h4>
+                  <ul className="space-y-3 pl-1">
+                    {data.regulations.isha.map((item, idx) => {
+                      const id = `isha-${idx}`;
+                      const isExpanded = expandedRegs[id];
+                      return (
+                        <li key={idx} className="flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
+                          <button 
+                            onClick={() => setExpandedRegs(prev => ({ ...prev, [id]: !prev[id] }))}
+                            className="flex items-center justify-between p-4 text-left hover:bg-slate-100 transition-colors w-full"
+                          >
+                            <span className="font-bold text-slate-800 pr-4">{item.title}</span>
+                            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="px-4 pb-4 pt-2 text-slate-700 leading-relaxed border-t border-slate-100 bg-white">
+                              {formatSafetyText(item.content)}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              {data.regulations.kcs && data.regulations.kcs.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-md text-sm shadow-sm border border-blue-200">KCS (표준시방서)</span>
+                    <span className="text-slate-500 text-sm font-medium">{data.regulations.kcs.length}건</span>
+                  </h4>
+                  <ul className="space-y-3 pl-1">
+                    {data.regulations.kcs.map((item, idx) => {
+                      const id = `kcs-${idx}`;
+                      const isExpanded = expandedRegs[id];
+                      return (
+                        <li key={idx} className="flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
+                          <button 
+                            onClick={() => setExpandedRegs(prev => ({ ...prev, [id]: !prev[id] }))}
+                            className="flex items-center justify-between p-4 text-left hover:bg-slate-100 transition-colors w-full"
+                          >
+                            <span className="font-bold text-slate-800 pr-4">{item.title}</span>
+                            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="px-4 pb-4 pt-2 text-slate-700 leading-relaxed border-t border-slate-100 bg-white">
+                              {formatSafetyText(item.content)}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              {data.regulations.kosha && data.regulations.kosha.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-md text-sm shadow-sm border border-emerald-200">KOSHA GUIDE</span>
+                    <span className="text-slate-500 text-sm font-medium">{data.regulations.kosha.length}건</span>
+                  </h4>
+                  <ul className="space-y-3 pl-1">
+                    {data.regulations.kosha.map((item, idx) => {
+                      const id = `kosha-${idx}`;
+                      const isExpanded = expandedRegs[id];
+                      return (
+                        <li key={idx} className="flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
+                          <button 
+                            onClick={() => setExpandedRegs(prev => ({ ...prev, [id]: !prev[id] }))}
+                            className="flex items-center justify-between p-4 text-left hover:bg-slate-100 transition-colors w-full"
+                          >
+                            <span className="font-bold text-slate-800 pr-4">{item.title}</span>
+                            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="px-4 pb-4 pt-2 text-slate-700 leading-relaxed border-t border-slate-100 bg-white">
+                              {formatSafetyText(item.content)}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button 
+                onClick={() => setShowAllRegulations(false)}
+                className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-6 px-6 text-sm mt-auto flex flex-col md:flex-row justify-between items-center md:items-end gap-4">
