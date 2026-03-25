@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+.bg-safety-stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #facc15,
+    #facc15 20px,
+    #000000 20px,
+    #000000 40px
+  );
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #printable-checklist, #printable-checklist * {
+    visibility: visible;
+  }
+  
+  #printable-checklist {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
+}
