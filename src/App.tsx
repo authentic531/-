@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Search, Printer, AlertTriangle, CheckSquare, BookOpen, ShieldAlert, Loader2, History } from 'lucide-react';
+import { Search, Printer, AlertTriangle, CheckSquare, BookOpen, ShieldAlert, Loader2, History, Settings, Key } from 'lucide-react';
 
 const formatSafetyText = (text: string) => {
   if (!text) return null;
@@ -56,6 +56,8 @@ export default function App() {
   const [checklistState, setChecklistState] = useState<Record<number, 'O' | 'X' | null>>({});
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('smart_tbm_recent');
@@ -65,6 +67,10 @@ export default function App() {
       } catch (e) {
         console.error('Failed to parse recent searches', e);
       }
+    }
+    const savedKey = localStorage.getItem('smart_tbm_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
     }
   }, []);
 
@@ -90,7 +96,14 @@ export default function App() {
     localStorage.setItem('smart_tbm_recent', JSON.stringify(newRecent));
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const keyToUse = apiKey || process.env.GEMINI_API_KEY;
+      if (!keyToUse) {
+        setError('API 키가 설정되지 않았습니다. 우측 상단의 설정(⚙️)에서 API 키를 입력해주세요.');
+        setLoading(false);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey: keyToUse });
       const prompt = `
 너는 대한민국 건설 현장의 베테랑 안전 관리자이자 공사 감독관이야.
 사용자가 입력한 당일 작업 공정: "${query}"
@@ -200,14 +213,56 @@ export default function App() {
           <ShieldAlert className="w-8 h-8 text-yellow-400" />
           <h1 className="text-2xl font-black text-yellow-400 tracking-tight">SMART TBM</h1>
         </button>
-        <div className="flex flex-col items-start sm:items-end text-xs sm:text-sm font-medium text-slate-300 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 w-full sm:w-auto">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-white">📍 현장: 경남 진주</span>
-            <span className="hidden sm:inline text-slate-500">|</span>
-            <span>☀️ 맑음 17°C</span>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-col items-start sm:items-end text-xs sm:text-sm font-medium text-slate-300 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-white">📍 현장: 경남 진주</span>
+              <span className="hidden sm:inline text-slate-500">|</span>
+              <span>☀️ 맑음 17°C</span>
+            </div>
+            <div className="text-yellow-400 mt-1 font-bold">
+              💨 풍속 2m/s (타워크레인 및 고소작업 양호)
+            </div>
           </div>
-          <div className="text-yellow-400 mt-1 font-bold">
-            💨 풍속 2m/s (타워크레인 및 고소작업 양호)
+          
+          {/* API Key Settings */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors flex-shrink-0"
+              title="API 키 설정"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            {showSettings && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50">
+                <div className="flex items-center gap-2 mb-3 text-slate-800 font-bold">
+                  <Key className="w-4 h-4 text-yellow-500" />
+                  <span>Gemini API 키 설정</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  개인 API 키를 입력하세요. 키는 브라우저에만 안전하게 저장되며 서버로 전송되지 않습니다.
+                </p>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    localStorage.setItem('smart_tbm_api_key', e.target.value);
+                  }}
+                  placeholder="AIzaSy..."
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 mb-3"
+                />
+                <div className="flex justify-end">
+                  <button 
+                    onClick={() => setShowSettings(false)}
+                    className="text-xs font-bold bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    확인 및 닫기
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
