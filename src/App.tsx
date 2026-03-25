@@ -141,7 +141,7 @@ export default function App() {
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
-          tools: [{ googleSearch: {} }],
+          // tools: [{ googleSearch: {} }], // 무료 티어/신규 키에서 429 에러(할당량 초과)를 유발할 수 있어 임시 비활성화
           temperature: 0.2,
         }
       });
