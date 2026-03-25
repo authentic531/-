@@ -106,7 +106,7 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: keyToUse });
       const prompt = `
 너는 대한민국 건설 현장의 베테랑 안전 관리자이자 공사 감독관이야.
-사용자가 입력한 당일 작업 공정: "${query}"
+사용자가 입력한 당일 작업 공정: "${searchTerm}"
 
 네가 학습한 [표준시방서(KCS)]와 [산업안전보건법 및 관련 안전규칙]을 바탕으로 현장 작업자들이 TBM(Tool Box Meeting) 시간에 직관적으로 이해할 수 있는 안전 가이드를 작성해 줘.
 구글 검색(Grounding)을 적극 활용하여 최신 정보를 참고할 것.
