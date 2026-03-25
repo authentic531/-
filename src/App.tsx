@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { Search, Printer, AlertTriangle, CheckSquare, BookOpen, ShieldAlert, Loader2, History } from 'lucide-react';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const formatSafetyText = (text: string) => {
   if (!text) return null;
   let formatted = text.replace(/(금지|위험|초과|추락|붕괴|감전|사망|주의|경고|필수|접근금지|질식)/g, '<span class="text-red-600 font-extrabold text-[1.05em]">$1</span>');
@@ -92,6 +90,7 @@ export default function App() {
     localStorage.setItem('smart_tbm_recent', JSON.stringify(newRecent));
 
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `
 너는 대한민국 건설 현장의 베테랑 안전 관리자이자 공사 감독관이야.
 사용자가 입력한 당일 작업 공정: "${query}"
