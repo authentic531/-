@@ -322,7 +322,7 @@ export default function App() {
 
       <div className="h-2 w-full bg-safety-stripe"></div>
       {/* Header */}
-      <header className="bg-slate-900 border-b-4 border-yellow-400 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10 shadow-md">
+      <header className="bg-slate-900 border-b-4 border-yellow-400 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-50 shadow-md">
         <button onClick={handleReset} className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left">
           <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400" />
           <h1 className="text-xl sm:text-2xl font-black text-yellow-400 tracking-tight">SMART TBM</h1>
